@@ -1,0 +1,15 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: parking_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=sqlite:///./parking.db
+      - SECRET_KEY=super-secret-hackathon-key
+      - PUSH_PROVIDER=none
+    restart: unless-stopped
