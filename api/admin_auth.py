@@ -1,17 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated, Optional
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import get_db
 from models.core import UserRequest, TestSnapshot, AdminUser, TestCamera
-from schemas.auth import Token
+from schemas.auth import CaptchaConfigResponse, Token
 from schemas.parking import AdminCameraResponse
 from services import auth
+from services import smartcaptcha
 from config import settings
 from jose import JWTError, jwt
 
 router = APIRouter(tags=["Admin API"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+
+def _client_ip(request: Request) -> Optional[str]:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return None
 
 
 async def get_current_admin(
@@ -40,8 +52,13 @@ async def get_current_admin(
 
 @router.post("/auth/login", response_model=Token)
 def login(
-    db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+    request: Request,
+    db: Session = Depends(get_db),
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    captcha_token: Annotated[Optional[str], Form()] = None,
 ):
+    smartcaptcha.require_valid_captcha(captcha_token, _client_ip(request))
+
     admin = db.query(AdminUser).filter(AdminUser.email == form_data.username).first()
     if not admin or not auth.verify_password(form_data.password, admin.hashed_password):
         raise HTTPException(
@@ -109,9 +126,13 @@ def update_camera_status_mock(
 
 
 # TODO: замена на реальные данные
-@router.get("/auth/captcha-config")
-def get_captcha_config_mock():
-    return {"site_key": "mock-site-key-12345", "enabled": True}
+@router.get("/auth/captcha-config", response_model=CaptchaConfigResponse)
+def get_captcha_config():
+    site = (settings.SMARTCAPTCHA_SITE_KEY or "").strip()
+    return CaptchaConfigResponse(
+        site_key=site,
+        enabled=smartcaptcha.is_enabled() and bool(site),
+    )
 
 
 # TODO: замена на реальные данные

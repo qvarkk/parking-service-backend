@@ -46,6 +46,7 @@ class TestSnapshotCreate(BaseModel):
 class TripSessionCreate(BaseModel):
     target_camera_id: int
     device_token: Optional[str] = None
+    captcha_token: Optional[str] = None
 
 
 class CameraResponse(BaseModel):

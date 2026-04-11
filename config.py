@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     PUSH_PROVIDER: str = os.getenv("PUSH_PROVIDER", "none")
     FIREBASE_CREDENTIALS: str | None = os.getenv("FIREBASE_CREDENTIALS")
 
+    # Yandex SmartCaptcha: https://yandex.cloud/ru/docs/smartcaptcha/quickstart
+    SMARTCAPTCHA_SITE_KEY: str | None = None
+    SMARTCAPTCHA_SERVER_KEY: str | None = None
+
     class Config:
         env_file = ".env"
         extra = "ignore"
