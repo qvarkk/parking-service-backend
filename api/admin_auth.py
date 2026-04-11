@@ -29,13 +29,11 @@ from services import auth, email as email_service, smartcaptcha
 from config import settings
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+from api.limiter import limiter
 
 router = APIRouter(tags=["Admin API"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-
-# utils.get_client_ip used instead of local _client_ip
 
 
 async def get_current_admin(
@@ -71,6 +69,7 @@ async def get_current_admin(
 
 
 @router.post("/auth/login", response_model=Token)
+@limiter.limit("5/minute")
 def login(
     request: Request,
     db: Session = Depends(get_db),
@@ -231,7 +230,8 @@ def get_captcha_config():
 
 
 @router.post("/auth/bootstrap-admin")
-def bootstrap_admin(db: Session = Depends(get_db)):
+@limiter.limit("1/minute")
+def bootstrap_admin(request: Request, db: Session = Depends(get_db)):
     admin_exists = db.query(AdminUser).first()
 
     if admin_exists:
@@ -288,7 +288,8 @@ def get_me_mock(current_admin: AdminUser = Depends(get_current_admin)):
 
 
 @router.post("/auth/forgot-password")
-def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/hour")
+def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     admin = db.query(AdminUser).filter(AdminUser.email == data.email).first()
     if not admin:
         return {"status": "ok", "message": "Reset link sent"}
@@ -308,7 +309,8 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/reset-password")
-def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/hour")
+def reset_password(request: Request, data: ResetPasswordRequest, db: Session = Depends(get_db)):
     reset_token = (
         db.query(PasswordResetToken)
         .filter(

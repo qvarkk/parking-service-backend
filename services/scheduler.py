@@ -90,6 +90,7 @@ async def background_scheduler():
                         message=message,
                     )
                     db.add(notification)
+                    db.flush()
 
                     if session.device_token:
                         notifier.send_alert(
@@ -97,6 +98,8 @@ async def background_scheduler():
                             trip_id=str(session.id),
                             alert_type=alert_type,
                             message_text=message,
+                            notification_id=notification.id,
+                            free_spots=new_count,
                         )
 
                     _last_notified_spots[session.id] = new_count

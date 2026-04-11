@@ -29,7 +29,11 @@ def create_trip_session(
     ip = get_client_ip(request)
     ua = request.headers.get("user-agent")
     user_req = UserRequest(
-        camera_id=req.target_camera_id, ip_address=ip, user_agent=ua, is_success=False
+        camera_id=req.target_camera_id,
+        ip_address=ip,
+        user_agent=ua,
+        query_address=str(request.url),
+        is_success=False,
     )
     db.add(user_req)
     db.commit()

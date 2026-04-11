@@ -57,106 +57,14 @@ class FCMNotifier:
                 return path.resolve()
         return None
     
-    def send_parking_update(
-        self, 
-        device_token: str, 
-        trip_id: str, 
-        free_spots: int, 
-        distance: float,
-        eta_minutes: Optional[int] = None
-    ) -> Dict[str, Any]:
-        if not self.initialized:
-            return {"success": False, "error": "FCM not initialized"}
-
-        if not device_token:
-            return {"success": False, "error": "Device token is empty"}
-
-        if free_spots > 5:
-            body = (
-                f"На парковке {free_spots} свободных мест. Расстояние: {distance:.0f} м"
-            )
-        elif free_spots > 0:
-            body = f"Осталось всего {free_spots} мест! Расстояние: {distance:.0f} м"
-        else:
-            body = f"Свободных мест нет. Расстояние: {distance:.0f} м"
-
-        if eta_minutes is not None:
-            body += f". Прибытие через {eta_minutes} мин"
-        
-        data_payload = {
-            "trip_id": str(trip_id),
-            "type": "PARKING_UPDATE",
-            "free_spots": str(free_spots),
-            "distance": f"{distance:.0f}",
-            "timestamp": datetime.now().isoformat(),
-        }
-        if eta_minutes is not None:
-            data_payload["eta_minutes"] = str(eta_minutes)
-
-        message = messaging.Message(
-            notification=messaging.Notification(
-                title="Мониторинг парковки",
-                body=body,
-            ),
-            data=data_payload,
-            token=device_token,
-        )
-        
-        
-        try:
-            response = messaging.send(message)
-            logger.info("FCM отправлено message_id=%s trip=%s", response, trip_id)
-            return {"success": True, "message_id": response, "body": body}
-        except messaging.UnregisteredError:
-            logger.warning("FCM: токен снят с регистрации")
-            return {"success": False, "error": "Device token is not registered"}
-        except Exception as e:
-            logger.error("FCM: ошибка отправки: %s", e)
-            return {"success": False, "error": str(e)}
-    
-    def send_trip_started(
-        self, 
-        device_token: str, 
-        trip_id: str, 
-        destination: str
-    ) -> Dict[str, Any]:
-        if not self.initialized:
-            return {"success": False, "error": "FCM not initialized"}
-            
-        if not device_token:
-            return {"success": False, "error": "Device token is empty"}
-        
-        message = messaging.Message(
-            notification=messaging.Notification(
-                title="🚗 Мониторинг поездки запущен",
-                body=f"Отслеживаем парковку: {destination[:50]}",
-            ),
-            data={
-                "trip_id": str(trip_id),
-                "type": "TRIP_STARTED",
-                "destination": destination,
-                "timestamp": datetime.now().isoformat(),
-            },
-            token=device_token,
-        )
-        
-        try:
-            response = messaging.send(message)
-            logger.info("FCM trip_started message_id=%s", response)
-            return {"success": True, "message_id": response}
-        except messaging.UnregisteredError:
-            logger.warning("FCM: токен снят с регистрации")
-            return {"success": False, "error": "Device token is not registered"}
-        except Exception as e:
-            logger.error("FCM: %s", e)
-            return {"success": False, "error": str(e)}
-    
     def send_alert(
         self,
         device_token: str,
         trip_id: str,
         alert_type: str,
-        message_text: str
+        message_text: str,
+        notification_id: Optional[int] = None,
+        free_spots: Optional[int] = None
     ) -> Dict[str, Any]:
         if not self.initialized:
             return {"success": False, "error": "FCM not initialized"}
@@ -170,17 +78,25 @@ class FCMNotifier:
             "SPOTS_AVAILABLE": "Появились места!",
         }
 
+        data_payload = {
+            "trip_id": str(trip_id),
+            "type": "PARKING_ALERT",
+            "alert_type": alert_type,
+            "timestamp": datetime.now().isoformat(),
+        }
+        
+        if notification_id is not None:
+            data_payload["notification_id"] = str(notification_id)
+        
+        if free_spots is not None:
+            data_payload["free_spots"] = str(free_spots)
+
         message = messaging.Message(
             notification=messaging.Notification(
                 title=title_map.get(alert_type, "Обновление"),
                 body=message_text,
             ),
-            data={
-                "trip_id": str(trip_id),
-                "type": "PARKING_ALERT",
-                "alert_type": alert_type,
-                "timestamp": datetime.now().isoformat(),
-            },
+            data=data_payload,
             token=device_token,
         )
         
