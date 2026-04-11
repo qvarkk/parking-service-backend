@@ -13,3 +13,8 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+
+class CaptchaConfigResponse(BaseModel):
+    site_key: str
+    enabled: bool

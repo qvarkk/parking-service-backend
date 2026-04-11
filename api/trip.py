@@ -1,5 +1,5 @@
 import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas.parking import (
@@ -10,12 +10,26 @@ from schemas.parking import (
 )
 from models.core import TripSession, TripStatus, TripNotification, TestCamera
 from config import settings
+from services import smartcaptcha
 
 router = APIRouter(prefix="/trip-monitoring", tags=["Trip API"])
 
 
+def _client_ip(request: Request) -> str | None:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return None
+
+
 @router.post("/sessions", response_model=TripSessionResponse)
-def create_trip_session(req: TripSessionCreate, db: Session = Depends(get_db)):
+def create_trip_session(
+    req: TripSessionCreate, request: Request, db: Session = Depends(get_db)
+):
+    smartcaptcha.require_valid_captcha(req.captcha_token, _client_ip(request))
+
     camera = db.query(TestCamera).filter(TestCamera.id == req.target_camera_id).first()
     if not camera:
         raise HTTPException(status_code=404, detail="Target camera not found")

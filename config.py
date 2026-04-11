@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 
     DASHBOARD_URL: str = os.getenv("DASHBOARD_URL", "http://localhost:3000")
 
+    # Yandex SmartCaptcha: https://yandex.cloud/ru/docs/smartcaptcha/quickstart
+    SMARTCAPTCHA_SITE_KEY: str | None = None
+    SMARTCAPTCHA_SERVER_KEY: str | None = None
+
     class Config:
         env_file = ".env"
         extra = "ignore"
