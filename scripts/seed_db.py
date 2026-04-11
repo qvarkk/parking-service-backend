@@ -16,6 +16,7 @@ from services.auth import get_password_hash
 
 
 def seed_database():
+    # Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()

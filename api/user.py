@@ -32,22 +32,9 @@ def search_parking(
                 .first()
             )
 
-            distrib = {"A": 0, "B": 0, "C": 0, "PICKUP": 0}
             cam_total_free = 0
-
             if latest_snapshot:
-                distrib = {
-                    "A": latest_snapshot.free_a,
-                    "B": latest_snapshot.free_b,
-                    "C": latest_snapshot.free_c,
-                    "PICKUP": latest_snapshot.free_pickup,
-                }
-                cam_total_free = (
-                    latest_snapshot.free_a
-                    + latest_snapshot.free_b
-                    + latest_snapshot.free_c
-                    + latest_snapshot.free_pickup
-                )
+                cam_total_free = latest_snapshot.free_spots_count
 
             parkings.append(
                 {
@@ -56,8 +43,7 @@ def search_parking(
                     "lat": cam.lat,
                     "lon": cam.lon,
                     "distance_m": round(dist, 1),
-                    "total_free": cam_total_free,
-                    "distribution": distrib,
+                    "free_spots_count": cam_total_free,
                 }
             )
             total_free += cam_total_free

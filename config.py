@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
 
     TRIP_EXPIRATION_MINUTES: int = 60
+    PARKING_THRESHOLD_PERCENT: int = 15
+    SCHEDULER_INTERVAL_SECONDS: int = 60
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./parking.db")
 

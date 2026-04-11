@@ -19,8 +19,7 @@ class ParkingItem(BaseModel):
     lat: float
     lon: float
     distance_m: float
-    total_free: int
-    distribution: dict
+    free_spots_count: int
 
 
 class SearchParkingQueryParams(BaseModel):
@@ -37,10 +36,7 @@ class ParkingSearchResponse(BaseModel):
 
 class TestSnapshotCreate(BaseModel):
     camera_id: int
-    free_a: int = 0
-    free_b: int = 0
-    free_c: int = 0
-    free_pickup: int = 0
+    free_spots_count: int = 0
 
 
 class TripSessionCreate(BaseModel):
@@ -72,10 +68,7 @@ class CameraResponse(BaseModel):
 
 class SnapshotResponse(BaseModel):
     id: int
-    free_a: int
-    free_b: int
-    free_c: int
-    free_pickup: int
+    free_spots_count: int
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

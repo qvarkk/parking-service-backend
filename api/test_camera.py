@@ -20,10 +20,7 @@ def upload_screenshot_mock(data: TestSnapshotCreate, db: Session = Depends(get_d
 
     snapshot = TestSnapshot(
         camera_id=data.camera_id,
-        free_a=data.free_a,
-        free_b=data.free_b,
-        free_c=data.free_c,
-        free_pickup=data.free_pickup,
+        free_spots_count=data.free_spots_count,
     )
     db.add(snapshot)
     db.commit()

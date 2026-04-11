@@ -36,10 +36,7 @@ class TestSnapshot(Base):
     __tablename__ = "test_snapshots"
     id = Column(Integer, primary_key=True, index=True)
     camera_id = Column(Integer, ForeignKey("test_cameras.id"))
-    free_a = Column(Integer, default=0)
-    free_b = Column(Integer, default=0)
-    free_c = Column(Integer, default=0)
-    free_pickup = Column(Integer, default=0)
+    free_spots_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     camera = relationship("TestCamera", back_populates="snapshots")
