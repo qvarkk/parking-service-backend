@@ -6,12 +6,14 @@ from config import settings
 from database import engine, Base
 from api import user, trip, test_camera, admin_auth
 from services.scheduler import background_scheduler
+from scripts.seed_db import seed_database
 
 Base.metadata.create_all(bind=engine)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    seed_database()
     task = asyncio.create_task(background_scheduler())
     yield
     task.cancel()

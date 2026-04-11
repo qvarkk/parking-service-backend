@@ -1,3 +1,4 @@
+import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -7,16 +8,20 @@ from schemas.parking import (
     NotificationResponse,
     NotificationReadRequest,
 )
-from models.core import TripSession, TripStatus, TripNotification
+from models.core import TripSession, TripStatus, TripNotification, TestCamera
+from config import settings
 
 router = APIRouter(prefix="/trip-monitoring", tags=["Trip API"])
 
 
 @router.post("/sessions", response_model=TripSessionResponse)
 def create_trip_session(req: TripSessionCreate, db: Session = Depends(get_db)):
+    camera = db.query(TestCamera).filter(TestCamera.id == req.target_camera_id).first()
+    if not camera:
+        raise HTTPException(status_code=404, detail="Target camera not found")
+
     session = TripSession(
-        target_lat=req.target_lat,
-        target_lon=req.target_lon,
+        target_camera_id=req.target_camera_id,
         device_token=req.device_token,
     )
     db.add(session)
@@ -35,7 +40,6 @@ def get_trip_session(session_id: int, db: Session = Depends(get_db)):
 
 @router.get("/notifications/pull", response_model=list[NotificationResponse])
 def pull_notifications(session_id: int, db: Session = Depends(get_db)):
-    # Fallback notifications pull mechanism
     notifications = (
         db.query(TripNotification)
         .filter(
@@ -56,16 +60,35 @@ def read_notifications(req: NotificationReadRequest, db: Session = Depends(get_d
 
 
 @router.post("/sessions/{session_id}/cancel", response_model=TripSessionResponse)
-def cancel_trip_session(session_id: int):
-    # Mock data
-    return TripSessionResponse(
-        id=session_id,
-        status=TripStatus.cancelled,
-        target_lat=55.75,
-        target_lon=37.61
-    )
+def cancel_trip_session(session_id: int, db: Session = Depends(get_db)):
+    session = db.query(TripSession).filter(TripSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session.status = TripStatus.cancelled
+    db.commit()
+    db.refresh(session)
+    return session
 
 
 @router.post("/runner/check-due")
-def check_due_sessions():
-    return {"status": "ok", "checked_sessions": 42, "expired": 3}
+def check_due_sessions(db: Session = Depends(get_db)):
+    active_sessions = (
+        db.query(TripSession).filter(TripSession.status == TripStatus.active).all()
+    )
+    checked_count = len(active_sessions)
+    expired_count = 0
+    now = datetime.datetime.utcnow()
+
+    for session in active_sessions:
+        if session.created_at:
+            created_utc = session.created_at.replace(tzinfo=None)
+            if (
+                now - created_utc
+            ).total_seconds() > settings.TRIP_EXPIRATION_MINUTES * 60:
+                session.status = TripStatus.expired
+                expired_count += 1
+
+    if expired_count > 0:
+        db.commit()
+
+    return {"status": "ok", "checked_sessions": checked_count, "expired": expired_count}

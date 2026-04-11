@@ -29,6 +29,7 @@ class TestCamera(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     snapshots = relationship("TestSnapshot", back_populates="camera")
+    sessions = relationship("TripSession", back_populates="camera")
 
 
 class TestSnapshot(Base):
@@ -56,13 +57,13 @@ class UserRequest(Base):
 class TripSession(Base):
     __tablename__ = "trip_sessions"
     id = Column(Integer, primary_key=True, index=True)
-    target_lat = Column(Float, nullable=False)
-    target_lon = Column(Float, nullable=False)
+    target_camera_id = Column(Integer, ForeignKey("test_cameras.id"))
     status = Column(SQLEnum(TripStatus), default=TripStatus.active)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     device_token = Column(String, nullable=True)
 
     notifications = relationship("TripNotification", back_populates="session")
+    camera = relationship("TestCamera", back_populates="sessions")
 
 
 class TripNotification(Base):

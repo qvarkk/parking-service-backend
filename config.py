@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Арбузный API для Паркингов"
     VERSION: str = "1.0.0"
 
+    TRIP_EXPIRATION_MINUTES: int = 60
+
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./parking.db")
 
     SECRET_KEY: str = os.getenv("SECRET_KEY", "remove-me-please")

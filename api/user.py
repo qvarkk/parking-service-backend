@@ -23,8 +23,8 @@ def search_parking(
     total_free = 0
 
     for cam in cameras:
-        dist = calculate_distance(lat, lon, cam.lat, cam.lon)
-        if dist <= radius:
+        dist = calculate_distance(params.lat, params.lon, cam.lat, cam.lon)
+        if dist <= params.radius:
             latest_snapshot = (
                 db.query(TestSnapshot)
                 .filter(TestSnapshot.camera_id == cam.id)
@@ -65,5 +65,5 @@ def search_parking(
     parkings.sort(key=lambda x: x["distance_m"])
 
     return ParkingSearchResponse(
-        total_free_in_radius=total_free, radius_m=radius, parkings=parkings
+        total_free_in_radius=total_free, radius_m=params.radius, parkings=parkings
     )
