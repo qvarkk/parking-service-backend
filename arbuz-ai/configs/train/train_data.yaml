@@ -1,0 +1,35 @@
+# Обучение из репозитория: разметка в arbuz-ai/train (.jpg + .txt рядом).
+# В arbuz-ai/test только картинки — см. configs/data/test_data.yaml для инференса.
+arbuz_repo_dataset: true
+val_ratio: 0.15
+# Отдельно от seed обучения — воспроизводимое разбиение train/val
+dataset_split_seed: 42
+
+# Ручной режим (если arbuz_repo_dataset: false):
+data_yaml: ""
+dataset_path: ""
+classes: []
+
+model_name: "yolov8m.pt"
+
+epochs: 10
+imgsz: 640
+batch: 8
+# Воркеры DataLoader: в Colab часто 2–4 стабильнее; на Windows при зависаниях попробуйте 0
+workers: 2
+# GPU: "0" — первая видеокарта (Ultralytics); "cpu" — без CUDA; "gpu"/"auto" — в train.py выберется CUDA при наличии
+device: "0"
+
+project: "outputs/runs"
+experiment_name: "exp_baseline"
+
+save_original_weights: true
+original_weights_filename: "original_pretrained.pt"
+
+exist_ok: true
+
+patience: 5
+save_period: 2
+seed: 42
+
+export_formats: []
