@@ -20,8 +20,9 @@ class Settings(BaseSettings):
 
     FIREBASE_CREDENTIALS: str | None = None
 
+
     class Config:
         env_file = ".env"
-
+        extra = "ignore"
 
 settings = Settings()
