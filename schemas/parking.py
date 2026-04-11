@@ -48,6 +48,13 @@ class TripSessionCreate(BaseModel):
     device_token: Optional[str] = None
 
 
+class AdminCameraCreate(BaseModel):
+    name: str
+    lat: float
+    lon: float
+    status: Optional[CameraStatus] = CameraStatus.unknown
+
+
 class CameraResponse(BaseModel):
     id: int
     name: str

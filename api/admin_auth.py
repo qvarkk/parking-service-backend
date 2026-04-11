@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.core import UserRequest, TestSnapshot, AdminUser, TestCamera
 from schemas.auth import Token
-from schemas.parking import AdminCameraResponse
+from schemas.parking import AdminCameraResponse, AdminCameraCreate
 from services import auth
 from config import settings
 from jose import JWTError, jwt
@@ -88,12 +88,22 @@ def get_admin_cameras(
     return cameras
 
 
-# TODO: замена на реальные данные
-@router.post("/admin/cameras")
-def create_admin_camera_mock(
-    data: dict, current_admin: AdminUser = Depends(get_current_admin)
+@router.post("/admin/cameras", response_model=AdminCameraResponse)
+def create_admin_camera(
+    data: AdminCameraCreate,
+    db: Session = Depends(get_db),
+    current_admin: AdminUser = Depends(get_current_admin)
 ):
-    return {"id": 3, "status": "unknown", **data}
+    new_camera = TestCamera(
+        name=data.name,
+        lat=data.lat,
+        lon=data.lon,
+        status=data.status
+    )
+    db.add(new_camera)
+    db.commit()
+    db.refresh(new_camera)
+    return new_camera
 
 
 # TODO: замена на реальные данные
