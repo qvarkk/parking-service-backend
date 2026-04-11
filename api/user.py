@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from api.limiter import limiter
 from sqlalchemy.orm import Session
 from database import get_db
 from models.core import UserRequest, TestSnapshot, TestCamera
@@ -13,6 +14,7 @@ router = APIRouter(prefix="", tags=["User API"])
 
 
 @router.get("/parking/search", response_model=ParkingSearchResponse)
+@limiter.limit("20/minute")
 def search_parking(
     request: Request,
     params: SearchParkingQueryParams = Depends(),

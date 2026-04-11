@@ -51,12 +51,6 @@ def seed_database():
                 lon=37.6050,
                 status=CameraStatus.camera_unreachable,
             ),
-            TestCamera(
-                name="Парк Горького",
-                lat=55.7282,
-                lon=37.6011,
-                status=CameraStatus.ok,
-            ),
         ]
         db.add_all(cameras)
         db.commit()
