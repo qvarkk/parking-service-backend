@@ -8,8 +8,6 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
-    environment:
-      - DATABASE_URL=sqlite:///./parking.db
-      - SECRET_KEY=super-secret-hackathon-key
-      - PUSH_PROVIDER=none
+    env_file:
+      - .env
     restart: unless-stopped
