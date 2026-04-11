@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     PARKING_THRESHOLD_PERCENT: int = 15
     SCHEDULER_INTERVAL_SECONDS: int = 60
 
+    # YOLO (Ultralytics): веса в корне репо или абсолютный путь
+    PARKING_YOLO_WEIGHTS: str = "best.pt"
+    PARKING_YOLO_CONF: float = 0.25
+    # Явные индексы классов через запятую, если имена в датасете неочевидны
+    PARKING_YOLO_FREE_CLASS_IDS: str | None = None
+    PARKING_YOLO_OCCUPIED_CLASS_IDS: str | None = None
+
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./parking.db")
 
     SECRET_KEY: str = os.getenv("SECRET_KEY", "remove-me-please")
