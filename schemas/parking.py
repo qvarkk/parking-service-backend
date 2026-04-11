@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 from models.core import CameraStatus, TripStatus
@@ -27,7 +27,6 @@ class SearchParkingQueryParams(BaseModel):
     lat: float = Field(..., description="Широта")
     lon: float = Field(..., description="Долгота")
     radius: int = Field(1000, ge=100, le=10000, description="Радиус поиска в метрах")
-    min_free: int = Field(0, description="Минимальное кол-во свободных мест")
 
 
 class ParkingSearchResponse(BaseModel):
@@ -45,16 +44,41 @@ class TestSnapshotCreate(BaseModel):
 
 
 class TripSessionCreate(BaseModel):
-    target_lat: float
-    target_lon: float
+    target_camera_id: int
     device_token: Optional[str] = None
+
+
+class CameraResponse(BaseModel):
+    id: int
+    name: str
+    lat: float
+    lon: float
+    status: CameraStatus
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SnapshotResponse(BaseModel):
+    id: int
+    free_a: int
+    free_b: int
+    free_c: int
+    free_pickup: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminCameraResponse(CameraResponse):
+    latest_snapshot: Optional[SnapshotResponse] = None
 
 
 class TripSessionResponse(BaseModel):
     id: int
     status: TripStatus
-    target_lat: float
-    target_lon: float
+    camera: CameraResponse
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NotificationResponse(BaseModel):

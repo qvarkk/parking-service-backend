@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import get_db
-from models.core import UserRequest, TestSnapshot, AdminUser
+from models.core import UserRequest, TestSnapshot, AdminUser, TestCamera
 from schemas.auth import Token
+from schemas.parking import AdminCameraResponse
 from services import auth
 from config import settings
 from jose import JWTError, jwt
@@ -69,19 +70,22 @@ def get_availability_stats(
     return {"total_snapshots_received": total}
 
 
-# TODO: замена на реальные данные
-@router.get("/admin/cameras")
-def get_admin_cameras_mock(current_admin: AdminUser = Depends(get_current_admin)):
-    return [
-        {"id": 1, "lat": 55.75, "lon": 37.61, "status": "ok", "name": "Camera 1"},
-        {
-            "id": 2,
-            "lat": 55.76,
-            "lon": 37.62,
-            "status": "unreachable",
-            "name": "Camera 2",
-        },
-    ]
+@router.get("/admin/cameras", response_model=list[AdminCameraResponse])
+def get_admin_cameras(
+    db: Session = Depends(get_db), 
+    current_admin: AdminUser = Depends(get_current_admin)
+):
+    cameras = db.query(TestCamera).all()
+    
+    for cam in cameras:
+        cam.latest_snapshot = (
+            db.query(TestSnapshot)
+            .filter(TestSnapshot.camera_id == cam.id)
+            .order_by(TestSnapshot.created_at.desc())
+            .first()
+        )
+        
+    return cameras
 
 
 # TODO: замена на реальные данные
