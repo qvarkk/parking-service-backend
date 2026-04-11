@@ -6,3 +6,10 @@ __pycache__/
 *.db
 .env
 .pylintrc
+.idea
+*.pt
+*.cache
+*.lnk
+arbuz-ai/outputs/
+arbuz-ai/test
+arbuz-ai/train

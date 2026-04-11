@@ -1,0 +1,7 @@
+names:
+- vacant
+- occupied
+nc: 2
+path: C:\Users\belen\PycharmProjects\parking-service-backend\arbuz-ai
+train: configs/data/train_images.txt
+val: configs/data/val_images.txt
