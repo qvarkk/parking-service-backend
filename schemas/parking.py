@@ -4,15 +4,6 @@ from datetime import datetime
 from models.core import CameraStatus, TripStatus
 
 
-class GeoResolveRequest(BaseModel):
-    address: str
-
-
-class GeoResolveResponse(BaseModel):
-    lat: float
-    lon: float
-
-
 class ParkingItem(BaseModel):
     id: int
     name: str

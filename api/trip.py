@@ -8,7 +8,13 @@ from schemas.parking import (
     NotificationResponse,
     NotificationReadRequest,
 )
-from models.core import TripSession, TripStatus, TripNotification, TestCamera
+from models.core import (
+    UserRequest,
+    TripSession,
+    TripStatus,
+    TripNotification,
+    TestCamera,
+)
 from config import settings
 from services import smartcaptcha
 
@@ -28,10 +34,25 @@ def _client_ip(request: Request) -> str | None:
 def create_trip_session(
     req: TripSessionCreate, request: Request, db: Session = Depends(get_db)
 ):
-    smartcaptcha.require_valid_captcha(req.captcha_token, _client_ip(request))
+    ip = _client_ip(request)
+    ua = request.headers.get("user-agent")
+    user_req = UserRequest(
+        camera_id=req.target_camera_id, ip_address=ip, user_agent=ua, is_success=False
+    )
+    db.add(user_req)
+    db.commit()
+
+    try:
+        smartcaptcha.require_valid_captcha(req.captcha_token, ip)
+    except HTTPException as e:
+        user_req.error_code = "captcha_invalid"
+        db.commit()
+        raise e
 
     camera = db.query(TestCamera).filter(TestCamera.id == req.target_camera_id).first()
     if not camera:
+        user_req.error_code = "camera_not_found"
+        db.commit()
         raise HTTPException(status_code=404, detail="Target camera not found")
 
     session = TripSession(
@@ -39,6 +60,9 @@ def create_trip_session(
         device_token=req.device_token,
     )
     db.add(session)
+
+    user_req.is_success = True
+
     db.commit()
     db.refresh(session)
     return session

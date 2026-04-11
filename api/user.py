@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models.core import UserRequest, TestSnapshot, TestCamera
+from models.core import TestSnapshot, TestCamera
 from schemas.parking import (
-    GeoResolveRequest,
-    GeoResolveResponse,
     ParkingSearchResponse,
     SearchParkingQueryParams,
 )

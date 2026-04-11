@@ -45,9 +45,11 @@ class TestSnapshot(Base):
 class UserRequest(Base):
     __tablename__ = "user_requests"
     id = Column(Integer, primary_key=True, index=True)
-    query_address = Column(String, nullable=True)
-    resolved_lat = Column(Float, nullable=True)
-    resolved_lon = Column(Float, nullable=True)
+    camera_id = Column(Integer, ForeignKey("test_cameras.id"), nullable=True)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    is_success = Column(Boolean, default=False)
+    error_code = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
