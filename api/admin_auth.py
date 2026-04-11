@@ -9,16 +9,18 @@ from models.core import (
     AdminUser,
     TestCamera,
     BlacklistedToken,
+    PasswordResetToken,
 )
-from schemas.auth import Token
+from schemas.auth import Token, ForgotPasswordRequest, ResetPasswordRequest
 from schemas.parking import (
     AdminCameraResponse,
     AdminCameraCreate,
     AdminCameraStatusUpdate,
 )
-from services import auth
+from services import auth, email as email_service
 from config import settings
 from jose import JWTError, jwt
+from datetime import datetime, timedelta
 
 router = APIRouter(tags=["Admin API"])
 
@@ -204,19 +206,58 @@ def logout(
     return {"status": "ok", "message": "Successfully logged out"}
 
 
-# TODO: замена на реальные данные
 @router.get("/auth/me")
 def get_me_mock(current_admin: AdminUser = Depends(get_current_admin)):
     return {"email": current_admin.email, "is_active": current_admin.is_active}
 
 
-# TODO: замена на реальные данные
 @router.post("/auth/forgot-password")
-def forgot_password_mock(data: dict):
+def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    admin = db.query(AdminUser).filter(AdminUser.email == data.email).first()
+    if not admin:
+        return {"status": "ok", "message": "Reset link sent"}
+
+    token = auth.create_reset_token(admin.email)
+    expires_at = datetime.utcnow() + timedelta(minutes=30)
+
+    reset_token = PasswordResetToken(
+        email=admin.email, token=token, expires_at=expires_at
+    )
+    db.add(reset_token)
+    db.commit()
+
+    email_service.send_reset_password_email(admin.email, token)
+
     return {"status": "ok", "message": "Reset link sent"}
 
 
-# TODO: замена на реальные данные
 @router.post("/auth/reset-password")
-def reset_password_mock(data: dict):
-    return {"status": "ok", "message": "Password updated"}
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    reset_token = (
+        db.query(PasswordResetToken)
+        .filter(
+            PasswordResetToken.token == data.token,
+            PasswordResetToken.expires_at > datetime.utcnow(),
+        )
+        .first()
+    )
+
+    if not reset_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    admin = db.query(AdminUser).filter(AdminUser.email == reset_token.email).first()
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found"
+        )
+
+    admin.hashed_password = auth.get_password_hash(data.new_password)
+
+    # Удаляем использованный токен
+    db.delete(reset_token)
+    db.commit()
+
+    return {"status": "ok", "message": "Password updated successfully"}

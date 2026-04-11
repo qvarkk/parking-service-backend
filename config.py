@@ -19,6 +19,16 @@ class Settings(BaseSettings):
 
     PUSH_PROVIDER: str = os.getenv("PUSH_PROVIDER", "none")
     FIREBASE_CREDENTIALS: str | None = os.getenv("FIREBASE_CREDENTIALS")
+    
+    SMTP_TLS: bool = True
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_HOST: str | None = os.getenv("SMTP_HOST")
+    SMTP_USER: str | None = os.getenv("SMTP_USER")
+    SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
+    EMAILS_FROM_EMAIL: str = os.getenv("EMAILS_FROM_EMAIL", "noreply@example.com")
+    EMAILS_FROM_NAME: str = os.getenv("EMAILS_FROM_NAME", "Parking Admin")
+
+    DASHBOARD_URL: str = os.getenv("DASHBOARD_URL", "http://localhost:3000")
 
     class Config:
         env_file = ".env"
