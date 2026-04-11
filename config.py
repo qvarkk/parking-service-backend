@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     PUSH_PROVIDER: str = os.getenv("PUSH_PROVIDER", "none")
     FCM_SERVER_KEY: str | None = os.getenv("FCM_SERVER_KEY", None)
 
+    FIREBASE_CREDENTIALS: str | None = None
+
     class Config:
         env_file = ".env"
 
