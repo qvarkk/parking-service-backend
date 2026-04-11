@@ -4,7 +4,11 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.core import UserRequest, TestSnapshot, AdminUser, TestCamera
 from schemas.auth import Token
-from schemas.parking import AdminCameraResponse, AdminCameraCreate
+from schemas.parking import (
+    AdminCameraResponse,
+    AdminCameraCreate,
+    AdminCameraStatusUpdate,
+)
 from services import auth
 from config import settings
 from jose import JWTError, jwt
@@ -72,11 +76,10 @@ def get_availability_stats(
 
 @router.get("/admin/cameras", response_model=list[AdminCameraResponse])
 def get_admin_cameras(
-    db: Session = Depends(get_db), 
-    current_admin: AdminUser = Depends(get_current_admin)
+    db: Session = Depends(get_db), current_admin: AdminUser = Depends(get_current_admin)
 ):
     cameras = db.query(TestCamera).all()
-    
+
     for cam in cameras:
         cam.latest_snapshot = (
             db.query(TestSnapshot)
@@ -84,7 +87,7 @@ def get_admin_cameras(
             .order_by(TestSnapshot.created_at.desc())
             .first()
         )
-        
+
     return cameras
 
 
@@ -92,13 +95,10 @@ def get_admin_cameras(
 def create_admin_camera(
     data: AdminCameraCreate,
     db: Session = Depends(get_db),
-    current_admin: AdminUser = Depends(get_current_admin)
+    current_admin: AdminUser = Depends(get_current_admin),
 ):
     new_camera = TestCamera(
-        name=data.name,
-        lat=data.lat,
-        lon=data.lon,
-        status=data.status
+        name=data.name, lat=data.lat, lon=data.lon, status=data.status
     )
     db.add(new_camera)
     db.commit()
@@ -106,16 +106,28 @@ def create_admin_camera(
     return new_camera
 
 
-# TODO: замена на реальные данные
-@router.post("/admin/cameras/{camera_id}/status")
-def update_camera_status_mock(
-    camera_id: int, data: dict, current_admin: AdminUser = Depends(get_current_admin)
+@router.post("/admin/cameras/{camera_id}/status", response_model=AdminCameraResponse)
+def update_camera_status(
+    camera_id: int,
+    data: AdminCameraStatusUpdate,
+    db: Session = Depends(get_db),
+    current_admin: AdminUser = Depends(get_current_admin),
 ):
-    return {
-        "status": "ok",
-        "camera_id": camera_id,
-        "new_status": data.get("status", "ok"),
-    }
+    camera = db.query(TestCamera).filter(TestCamera.id == camera_id).first()
+    if not camera:
+        raise HTTPException(status_code=404, detail="Camera not found")
+
+    camera.status = data.status
+    db.commit()
+
+    camera.latest_snapshot = (
+        db.query(TestSnapshot)
+        .filter(TestSnapshot.camera_id == camera.id)
+        .order_by(TestSnapshot.created_at.desc())
+        .first()
+    )
+
+    return camera
 
 
 # TODO: замена на реальные данные
@@ -124,10 +136,32 @@ def get_captcha_config_mock():
     return {"site_key": "mock-site-key-12345", "enabled": True}
 
 
-# TODO: замена на реальные данные
 @router.post("/auth/bootstrap-admin")
-def bootstrap_admin_mock(data: dict):
-    return {"status": "ok", "message": "Admin bootstrapped (if it was first run)"}
+def bootstrap_admin(db: Session = Depends(get_db)):
+    admin_exists = db.query(AdminUser).first()
+
+    if admin_exists:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin already exists. Bootstrapping is only allowed for fresh installations.",
+        )
+
+    default_admin = AdminUser(
+        email="admin@example.com",
+        hashed_password=auth.get_password_hash("admin123"),
+        is_active=True,
+    )
+
+    db.add(default_admin)
+    db.commit()
+    db.refresh(default_admin)
+
+    return {
+        "status": "ok",
+        "message": "Admin bootstrapped successfully",
+        "email": default_admin.email,
+        "note": "Use 'admin123' as password",
+    }
 
 
 # TODO: замена на реальные данные

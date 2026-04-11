@@ -55,6 +55,10 @@ class AdminCameraCreate(BaseModel):
     status: Optional[CameraStatus] = CameraStatus.unknown
 
 
+class AdminCameraStatusUpdate(BaseModel):
+    status: CameraStatus
+
+
 class CameraResponse(BaseModel):
     id: int
     name: str
