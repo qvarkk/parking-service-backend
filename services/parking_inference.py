@@ -19,7 +19,7 @@ _model_path_resolved: Optional[Path] = None
 
 def _require_ultralytics():
     try:
-        from ultralytics import YOLO  # noqa: WPS433
+        from ultralytics import YOLO
     except ImportError as e:
         raise ImportError(
             "Нужны пакеты torch и ultralytics: pip install torch ultralytics"

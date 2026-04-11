@@ -9,8 +9,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from services.parking_inference import count_parking_spots_from_image  # noqa: E402
-
+from services.parking_inference import count_parking_spots_from_image 
 
 def main() -> None:
     p = argparse.ArgumentParser(description="YOLO: свободные/занятые места по фото")
