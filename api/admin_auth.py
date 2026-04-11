@@ -35,9 +35,6 @@ router = APIRouter(tags=["Admin API"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
-# utils.get_client_ip used instead of local _client_ip
-
-
 async def get_current_admin(
     db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
 ):

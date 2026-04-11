@@ -23,6 +23,7 @@ def search_parking(
         lon=params.lon,
         ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
+        query_address=str(request.url),
         is_success=True,
     )
     db.add(user_req)
