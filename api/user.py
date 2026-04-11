@@ -13,19 +13,6 @@ from services.geo import resolve_address, calculate_distance
 router = APIRouter(prefix="", tags=["User API"])
 
 
-@router.post("/geo/resolve", response_model=GeoResolveResponse)
-def resolve_geo(req: GeoResolveRequest, db: Session = Depends(get_db)):
-    lat, lon = resolve_address(req.address)
-
-    user_req = UserRequest(
-        query_address=req.address, resolved_lat=lat, resolved_lon=lon
-    )
-    db.add(user_req)
-    db.commit()
-
-    return GeoResolveResponse(lat=lat, lon=lon)
-
-
 @router.get("/parking/search", response_model=ParkingSearchResponse)
 def search_parking(
     params: SearchParkingQueryParams = Depends(), db: Session = Depends(get_db)
