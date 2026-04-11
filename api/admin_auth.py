@@ -1,8 +1,15 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import get_db
-from models.core import UserRequest, TestSnapshot, AdminUser, TestCamera
+from models.core import (
+    UserRequest,
+    TestSnapshot,
+    AdminUser,
+    TestCamera,
+    BlacklistedToken,
+)
 from schemas.auth import Token
 from schemas.parking import (
     AdminCameraResponse,
@@ -31,8 +38,16 @@ async def get_current_admin(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         email: str = payload.get("sub")
-        if email is None:
+        jti: str = payload.get("jti")
+        if email is None or jti is None:
             raise credentials_exception
+
+        is_blacklisted = (
+            db.query(BlacklistedToken).filter(BlacklistedToken.jti == jti).first()
+        )
+        if is_blacklisted:
+            raise credentials_exception
+
     except JWTError as exc:
         raise credentials_exception from exc
 
@@ -164,10 +179,29 @@ def bootstrap_admin(db: Session = Depends(get_db)):
     }
 
 
-# TODO: замена на реальные данные
 @router.post("/auth/logout")
-def logout_mock(current_admin: AdminUser = Depends(get_current_admin)):
-    return {"status": "ok"}
+def logout(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+
+        if jti and exp:
+            # Конвертируем timestamp обратно в datetime
+            expires_at = datetime.fromtimestamp(exp)
+            blacklisted_token = BlacklistedToken(jti=jti, expires_at=expires_at)
+            db.add(blacklisted_token)
+            db.commit()
+    except JWTError:
+        pass
+
+    return {"status": "ok", "message": "Successfully logged out"}
 
 
 # TODO: замена на реальные данные
