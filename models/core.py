@@ -60,7 +60,9 @@ class TripSession(Base):
     target_lon = Column(Float, nullable=False)
     status = Column(SQLEnum(TripStatus), default=TripStatus.active)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    device_token = Column(String, nullable=True)  # for push
+    device_token = Column(String, nullable=True)
+
+    notifications = relationship("TripNotification", back_populates="session")
 
 
 class TripNotification(Base):
@@ -70,6 +72,8 @@ class TripNotification(Base):
     message = Column(String, nullable=False)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    session = relationship("TripSession", back_populates="notifications")
 
 
 class AdminUser(Base):

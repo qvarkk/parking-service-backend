@@ -23,6 +23,13 @@ class ParkingItem(BaseModel):
     distribution: dict
 
 
+class SearchParkingQueryParams(BaseModel):
+    lat: float = Field(..., description="Широта")
+    lon: float = Field(..., description="Долгота")
+    radius: int = Field(1000, ge=100, le=10000, description="Радиус поиска в метрах")
+    min_free: int = Field(0, description="Минимальное кол-во свободных мест")
+
+
 class ParkingSearchResponse(BaseModel):
     total_free_in_radius: int
     radius_m: int

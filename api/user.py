@@ -1,9 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models.core import UserRequest, TestSnapshot
-from schemas.parking import GeoResolveRequest, GeoResolveResponse, ParkingSearchResponse
-from services.geo import resolve_address
+from models.core import UserRequest, TestSnapshot, TestCamera
+from schemas.parking import (
+    GeoResolveRequest,
+    GeoResolveResponse,
+    ParkingSearchResponse,
+    SearchParkingQueryParams,
+)
+from services.geo import resolve_address, calculate_distance
 
 router = APIRouter(prefix="", tags=["User API"])
 
@@ -21,43 +26,57 @@ def resolve_geo(req: GeoResolveRequest, db: Session = Depends(get_db)):
     return GeoResolveResponse(lat=lat, lon=lon)
 
 
-# TODO: замена на реальные данные
 @router.get("/parking/search", response_model=ParkingSearchResponse)
 def search_parking(
-    lat: float, lon: float, radius: int = 1000, db: Session = Depends(get_db)
+    params: SearchParkingQueryParams = Depends(), db: Session = Depends(get_db)
 ):
-    mock_parkings = [
-        {
-            "id": 1,
-            "name": "Парковка 1",
-            "lat": lat + 0.002,
-            "lon": lon + 0.001,
-            "distance_m": 250.0,
-            "total_free": 15,
-            "distribution": {"A": 5, "B": 10, "C": 0, "PICKUP": 0},
-        },
-        {
-            "id": 2,
-            "name": "Парковка 2",
-            "lat": lat - 0.001,
-            "lon": lon - 0.003,
-            "distance_m": 420.0,
-            "total_free": 42,
-            "distribution": {"A": 12, "B": 20, "C": 10, "PICKUP": 0},
-        },
-        {
-            "id": 3,
-            "name": "Парковка 3",
-            "lat": lat + 0.004,
-            "lon": lon + 0.005,
-            "distance_m": 750.0,
-            "total_free": 4,
-            "distribution": {"A": 0, "B": 0, "C": 0, "PICKUP": 4},
-        },
-    ]
+    cameras = db.query(TestCamera).all()
 
-    total_free = sum(p["total_free"] for p in mock_parkings)
+    parkings = []
+    total_free = 0
+
+    for cam in cameras:
+        dist = calculate_distance(lat, lon, cam.lat, cam.lon)
+        if dist <= radius:
+            latest_snapshot = (
+                db.query(TestSnapshot)
+                .filter(TestSnapshot.camera_id == cam.id)
+                .order_by(TestSnapshot.created_at.desc())
+                .first()
+            )
+
+            distrib = {"A": 0, "B": 0, "C": 0, "PICKUP": 0}
+            cam_total_free = 0
+
+            if latest_snapshot:
+                distrib = {
+                    "A": latest_snapshot.free_a,
+                    "B": latest_snapshot.free_b,
+                    "C": latest_snapshot.free_c,
+                    "PICKUP": latest_snapshot.free_pickup,
+                }
+                cam_total_free = (
+                    latest_snapshot.free_a
+                    + latest_snapshot.free_b
+                    + latest_snapshot.free_c
+                    + latest_snapshot.free_pickup
+                )
+
+            parkings.append(
+                {
+                    "id": cam.id,
+                    "name": cam.name or f"Камера {cam.id}",
+                    "lat": cam.lat,
+                    "lon": cam.lon,
+                    "distance_m": round(dist, 1),
+                    "total_free": cam_total_free,
+                    "distribution": distrib,
+                }
+            )
+            total_free += cam_total_free
+
+    parkings.sort(key=lambda x: x["distance_m"])
 
     return ParkingSearchResponse(
-        total_free_in_radius=total_free, radius_m=radius, parkings=mock_parkings
+        total_free_in_radius=total_free, radius_m=radius, parkings=parkings
     )
