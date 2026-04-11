@@ -83,20 +83,25 @@ class FCMNotifier:
         if eta_minutes is not None:
             body += f". Прибытие через {eta_minutes} мин"
         
+        data_payload = {
+            "trip_id": str(trip_id),
+            "type": "PARKING_UPDATE",
+            "free_spots": str(free_spots),
+            "distance": f"{distance:.0f}",
+            "timestamp": datetime.now().isoformat(),
+        }
+        if eta_minutes is not None:
+            data_payload["eta_minutes"] = str(eta_minutes)
+
         message = messaging.Message(
             notification=messaging.Notification(
                 title="Мониторинг парковки",
                 body=body,
             ),
-            data={
-                "trip_id": str(trip_id),
-                "type": "PARKING_UPDATE",
-                "free_spots": str(free_spots),
-                "distance": str(int(distance)),
-                "timestamp": datetime.now().isoformat(),
-            },
+            data=data_payload,
             token=device_token,
         )
+        
         
         try:
             response = messaging.send(message)
@@ -117,6 +122,9 @@ class FCMNotifier:
     ) -> Dict[str, Any]:
         if not self.initialized:
             return {"success": False, "error": "FCM not initialized"}
+            
+        if not device_token:
+            return {"success": False, "error": "Device token is empty"}
         
         message = messaging.Message(
             notification=messaging.Notification(
@@ -136,6 +144,9 @@ class FCMNotifier:
             response = messaging.send(message)
             logger.info("FCM trip_started message_id=%s", response)
             return {"success": True, "message_id": response}
+        except messaging.UnregisteredError:
+            logger.warning("FCM: токен снят с регистрации")
+            return {"success": False, "error": "Device token is not registered"}
         except Exception as e:
             logger.error("FCM: %s", e)
             return {"success": False, "error": str(e)}
@@ -149,6 +160,9 @@ class FCMNotifier:
     ) -> Dict[str, Any]:
         if not self.initialized:
             return {"success": False, "error": "FCM not initialized"}
+            
+        if not device_token:
+            return {"success": False, "error": "Device token is empty"}
         
         title_map = {
             "FEW_SPOTS_LEFT": "Мало мест!",
@@ -174,6 +188,9 @@ class FCMNotifier:
             response = messaging.send(message)
             logger.info("FCM alert отправлен type=%s", alert_type)
             return {"success": True, "message_id": response}
+        except messaging.UnregisteredError:
+            logger.warning("FCM: токен снят с регистрации")
+            return {"success": False, "error": "Device token is not registered"}
         except Exception as e:
             logger.error("FCM: %s", e)
             return {"success": False, "error": str(e)}
