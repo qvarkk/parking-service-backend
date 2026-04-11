@@ -46,6 +46,9 @@ class UserRequest(Base):
     __tablename__ = "user_requests"
     id = Column(Integer, primary_key=True, index=True)
     camera_id = Column(Integer, ForeignKey("test_cameras.id"), nullable=True)
+    query_address = Column(String, nullable=True)
+    lat = Column(Float, nullable=True)
+    lon = Column(Float, nullable=True)
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
     is_success = Column(Boolean, default=False)

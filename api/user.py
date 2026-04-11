@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models.core import TestSnapshot, TestCamera
+from models.core import UserRequest, TestSnapshot, TestCamera
+from api.utils import get_client_ip
 from schemas.parking import (
     ParkingSearchResponse,
     SearchParkingQueryParams,
@@ -13,8 +14,20 @@ router = APIRouter(prefix="", tags=["User API"])
 
 @router.get("/parking/search", response_model=ParkingSearchResponse)
 def search_parking(
-    params: SearchParkingQueryParams = Depends(), db: Session = Depends(get_db)
+    request: Request,
+    params: SearchParkingQueryParams = Depends(),
+    db: Session = Depends(get_db),
 ):
+    user_req = UserRequest(
+        lat=params.lat,
+        lon=params.lon,
+        ip_address=get_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+        is_success=True,
+    )
+    db.add(user_req)
+    db.commit()
+
     cameras = db.query(TestCamera).all()
 
     parkings = []

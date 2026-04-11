@@ -23,6 +23,7 @@ from schemas.parking import (
     AdminCameraCreate,
     AdminCameraStatusUpdate,
 )
+from api.utils import get_client_ip
 from services import auth, email as email_service, smartcaptcha
 from config import settings
 from jose import JWTError, jwt
@@ -33,13 +34,7 @@ router = APIRouter(tags=["Admin API"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
-def _client_ip(request: Request) -> Optional[str]:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    if request.client:
-        return request.client.host
-    return None
+# utils.get_client_ip used instead of local _client_ip
 
 
 async def get_current_admin(
@@ -81,7 +76,7 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     captcha_token: Annotated[Optional[str], Form()] = None,
 ):
-    smartcaptcha.require_valid_captcha(captcha_token, _client_ip(request))
+    smartcaptcha.require_valid_captcha(captcha_token, get_client_ip(request))
 
     admin = db.query(AdminUser).filter(AdminUser.email == form_data.username).first()
     if not admin or not auth.verify_password(form_data.password, admin.hashed_password):

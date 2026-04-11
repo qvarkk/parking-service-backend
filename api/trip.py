@@ -17,24 +17,16 @@ from models.core import (
 )
 from config import settings
 from services import smartcaptcha
+from api.utils import get_client_ip
 
 router = APIRouter(prefix="/trip-monitoring", tags=["Trip API"])
-
-
-def _client_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    if request.client:
-        return request.client.host
-    return None
 
 
 @router.post("/sessions", response_model=TripSessionResponse)
 def create_trip_session(
     req: TripSessionCreate, request: Request, db: Session = Depends(get_db)
 ):
-    ip = _client_ip(request)
+    ip = get_client_ip(request)
     ua = request.headers.get("user-agent")
     user_req = UserRequest(
         camera_id=req.target_camera_id, ip_address=ip, user_agent=ua, is_success=False
