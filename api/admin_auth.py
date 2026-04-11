@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import get_db
 from models.core import (
@@ -94,16 +95,74 @@ def login(
 def get_requests_stats(
     db: Session = Depends(get_db), current_admin: AdminUser = Depends(get_current_admin)
 ):
-    total = db.query(UserRequest).count()
-    return {"total_requests": total}
+    now = datetime.utcnow()
+    start_time = now - timedelta(hours=11)
+    current_hour_start = now.replace(minute=0, second=0, microsecond=0)
+
+    stats = []
+    for i in range(11, -1, -1):
+        hour_dt = current_hour_start - timedelta(hours=i)
+        stats.append(
+            {
+                "hour": hour_dt.strftime("%H:00"),
+                "request_count": 0,
+                "_dt": hour_dt,
+            }
+        )
+
+    requests = db.query(UserRequest).filter(UserRequest.created_at >= start_time).all()
+
+    for req in requests:
+        req_dt = req.created_at.replace(tzinfo=None, minute=0, second=0, microsecond=0)
+        for item in stats:
+            if item["_dt"] == req_dt:
+                item["request_count"] += 1
+                break
+
+    for item in stats:
+        del item["_dt"]
+
+    return stats
 
 
 @router.get("/admin/stats/availability")
 def get_availability_stats(
     db: Session = Depends(get_db), current_admin: AdminUser = Depends(get_current_admin)
 ):
-    total = db.query(TestSnapshot).count()
-    return {"total_snapshots_received": total}
+    cameras = db.query(TestCamera).all()
+    total_currently_free = 0
+    for cam in cameras:
+        latest = (
+            db.query(TestSnapshot)
+            .filter(TestSnapshot.camera_id == cam.id)
+            .order_by(TestSnapshot.created_at.desc())
+            .first()
+        )
+        if latest:
+            total_currently_free += latest.free_spots_count
+
+    now = datetime.utcnow()
+    current_hour_start = now.replace(minute=0, second=0, microsecond=0)
+
+    hourly_trend = []
+    for i in range(9, -1, -1):
+        h_start = current_hour_start - timedelta(hours=i)
+        h_end = h_start + timedelta(hours=1)
+
+        avg_free = (
+            db.query(func.avg(TestSnapshot.free_spots_count))
+            .filter(TestSnapshot.created_at >= h_start, TestSnapshot.created_at < h_end)
+            .scalar()
+        )
+
+        hourly_trend.append(
+            {
+                "hour": h_start.strftime("%H:00"),
+                "free_spots": round(float(avg_free), 1) if avg_free is not None else 0,
+            }
+        )
+
+    return {"current_total_free": total_currently_free, "hourly_trend": hourly_trend}
 
 
 @router.get("/admin/cameras", response_model=list[AdminCameraResponse])
@@ -162,7 +221,6 @@ def update_camera_status(
     return camera
 
 
-# TODO: замена на реальные данные
 @router.get("/auth/captcha-config", response_model=CaptchaConfigResponse)
 def get_captcha_config():
     site = (settings.SMARTCAPTCHA_SITE_KEY or "").strip()
@@ -214,7 +272,6 @@ def logout(
         exp = payload.get("exp")
 
         if jti and exp:
-            # Конвертируем timestamp обратно в datetime
             expires_at = datetime.fromtimestamp(exp)
             blacklisted_token = BlacklistedToken(jti=jti, expires_at=expires_at)
             db.add(blacklisted_token)
@@ -275,7 +332,6 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
 
     admin.hashed_password = auth.get_password_hash(data.new_password)
 
-    # Удаляем использованный токен
     db.delete(reset_token)
     db.commit()
 
