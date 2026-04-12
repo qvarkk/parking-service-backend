@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     TRIP_EXPIRATION_MINUTES: int = 60
     PARKING_THRESHOLD_PERCENT: int = 15
     SCHEDULER_INTERVAL_SECONDS: int = 60
+    SCHEDULER_IMAGE_INTERVAL_SECONDS: int = 300
 
     # YOLO (Ultralytics): веса в корне репо или абсолютный путь
     PARKING_YOLO_WEIGHTS: str = "best.pt"
@@ -28,7 +29,7 @@ class Settings(BaseSettings):
 
     PUSH_PROVIDER: str = os.getenv("PUSH_PROVIDER", "none")
     FIREBASE_CREDENTIALS: str | None = os.getenv("FIREBASE_CREDENTIALS")
-    
+
     SMTP_TLS: bool = True
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_HOST: str | None = os.getenv("SMTP_HOST")
@@ -37,7 +38,7 @@ class Settings(BaseSettings):
     EMAILS_FROM_EMAIL: str = os.getenv("EMAILS_FROM_EMAIL", "noreply@example.com")
     EMAILS_FROM_NAME: str = os.getenv("EMAILS_FROM_NAME", "Parking Admin")
 
-    DASHBOARD_URL: str = os.getenv("DASHBOARD_URL", "http://localhost:3000")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
     BACKEND_CORS_ORIGINS: list[str] = ["*"]
 

@@ -36,6 +36,21 @@ def seed_database():
     else:
         print("[-] Администратор уже существует.")
 
+    if (
+        not db.query(AdminUser)
+        .filter(AdminUser.email == "nikita.toporischev@mail.ru")
+        .first()
+    ):
+        admin2 = AdminUser(
+            email="nikita.toporischev@mail.ru",
+            hashed_password=get_password_hash("123456"),
+            is_active=True,
+        )
+        db.add(admin2)
+        print("[+] Добавлен администратор: nikita.toporischev@mail.ru / 123456")
+    else:
+        print("[-] Администратор nikita уже существует.")
+
     if db.query(TestCamera).count() == 0:
         cameras = [
             TestCamera(name="ЦУМ", lat=55.7601, lon=37.6202, status=CameraStatus.ok),
@@ -95,7 +110,8 @@ def seed_database():
 
                 snapshot = TestSnapshot(
                     camera_id=camera.id,
-                    free_spots_count=random.randint(0, 20),
+                    image_url="test.jpg",
+                    free_spots_count=0,
                     created_at=created_at,
                 )
                 db.add(snapshot)

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 def send_reset_password_email(email_to: str, token: str):
     subject = f"Восстановление пароля для {settings.PROJECT_NAME}"
-    link = f"{settings.DASHBOARD_URL}/reset-password?token={token}"
+    link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
 
     html_content = f"""
     <html>

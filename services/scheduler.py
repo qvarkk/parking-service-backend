@@ -1,9 +1,18 @@
 import asyncio
 import logging
+import random
+from pathlib import Path
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models.core import TripSession, TripStatus, TripNotification, TestSnapshot
+from models.core import (
+    TripSession,
+    TripStatus,
+    TripNotification,
+    TestSnapshot,
+    TestCamera,
+)
 from services.notification import notifier
+from services.parking_inference import count_parking_spots_from_image
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -11,9 +20,62 @@ logger = logging.getLogger(__name__)
 _last_notified_spots = {}
 
 
-async def background_scheduler():
+async def image_ingestion_scheduler():
+    """
+    Периодическая загрузка случайных фото для всех камер.
+    """
     logger.info(
-        "Scheduler started with interval %s seconds",
+        "Image Ingestion Scheduler started with interval %s seconds",
+        settings.SCHEDULER_IMAGE_INTERVAL_SECONDS,
+    )
+
+    while True:
+        try:
+            db: Session = SessionLocal()
+            cameras = db.query(TestCamera).all()
+
+            for camera in cameras:
+                n = random.randint(1, 3)
+                image_name = f"cam_{camera.id}_{n}.jpg"
+                image_path = Path("cam-images") / image_name
+
+                if image_path.is_file():
+                    try:
+                        logger.info(
+                            "AI Processing for camera %s using %s",
+                            camera.id,
+                            image_name,
+                        )
+                        ai_result = count_parking_spots_from_image(image_path)
+
+                        new_snapshot = TestSnapshot(
+                            camera_id=camera.id,
+                            image_url=str(image_path),
+                            free_spots_count=ai_result.free_spots,
+                        )
+                        db.add(new_snapshot)
+                    except Exception as ai_err:
+                        logger.error(
+                            "AI inference failed for camera %s: %s", camera.id, ai_err
+                        )
+                else:
+                    logger.debug("File %s not found in cam-images/", image_path)
+
+            db.commit()
+            db.close()
+
+        except Exception as e:
+            logger.exception("Image Ingestion Error: %s", e)
+
+        await asyncio.sleep(settings.SCHEDULER_IMAGE_INTERVAL_SECONDS)
+
+
+async def background_scheduler():
+    """
+    Периодический мониторинг активных сессий и отправка уведомлений.
+    """
+    logger.info(
+        "Notification Scheduler started with interval %s seconds",
         settings.SCHEDULER_INTERVAL_SECONDS,
     )
 
@@ -50,7 +112,10 @@ async def background_scheduler():
                 if session.id not in _last_notified_spots:
                     _last_notified_spots[session.id] = new_count
                     logger.info(
-                        "Session %s: baseline set to %s spots", session.id, new_count
+                        "Session %s (Cam %s): baseline set to %s spots",
+                        session.id,
+                        session.target_camera_id,
+                        new_count,
                     )
                     continue
 
@@ -108,6 +173,6 @@ async def background_scheduler():
             db.close()
 
         except Exception as e:
-            logger.exception("Scheduler error: %s", e)
+            logger.exception("Notification Scheduler error: %s", e)
 
         await asyncio.sleep(settings.SCHEDULER_INTERVAL_SECONDS)

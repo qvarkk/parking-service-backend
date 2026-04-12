@@ -1,4 +1,10 @@
 import asyncio
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +17,7 @@ from api.limiter import limiter
 from config import settings
 from database import engine, Base
 from api import user, trip, test_camera, admin_auth
-from services.scheduler import background_scheduler
+from services.scheduler import background_scheduler, image_ingestion_scheduler
 from scripts.seed_db import seed_database
 
 Base.metadata.create_all(bind=engine)
@@ -20,9 +26,11 @@ Base.metadata.create_all(bind=engine)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     seed_database()
-    task = asyncio.create_task(background_scheduler())
+    task1 = asyncio.create_task(background_scheduler())
+    task2 = asyncio.create_task(image_ingestion_scheduler())
     yield
-    task.cancel()
+    task1.cancel()
+    task2.cancel()
 
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)

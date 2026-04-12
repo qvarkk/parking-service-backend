@@ -27,6 +27,7 @@ class ParkingSearchResponse(BaseModel):
 
 class TestSnapshotCreate(BaseModel):
     camera_id: int
+    image_url: Optional[str] = None
     free_spots_count: int = 0
 
 
@@ -59,6 +60,7 @@ class CameraResponse(BaseModel):
 
 class SnapshotResponse(BaseModel):
     id: int
+    image_url: Optional[str] = None
     free_spots_count: int
     created_at: datetime
 
