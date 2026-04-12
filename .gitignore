@@ -9,7 +9,6 @@ serviceAccountKey.json
 firebase-credentials.json
 .pylintrc
 .idea
-*.pt
 *.cache
 *.lnk
 arbuz-ai/outputs/
