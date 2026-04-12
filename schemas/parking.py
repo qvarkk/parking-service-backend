@@ -88,3 +88,8 @@ class NotificationResponse(BaseModel):
 
 class NotificationReadRequest(BaseModel):
     notification_ids: List[int]
+
+
+class AdminTripNotificationRequest(BaseModel):
+    trip_id: int
+    message: str

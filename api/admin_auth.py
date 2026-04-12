@@ -12,6 +12,8 @@ from models.core import (
     TestCamera,
     BlacklistedToken,
     PasswordResetToken,
+    TripSession,
+    TripNotification,
 )
 from schemas.auth import (
     Token,
@@ -23,9 +25,11 @@ from schemas.parking import (
     AdminCameraResponse,
     AdminCameraCreate,
     AdminCameraStatusUpdate,
+    AdminTripNotificationRequest,
 )
 from api.utils import get_client_ip
 from services import auth, email as email_service, smartcaptcha
+from services.notification import notifier
 from config import settings
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -289,7 +293,9 @@ def get_me_mock(current_admin: AdminUser = Depends(get_current_admin)):
 
 @router.post("/auth/forgot-password")
 @limiter.limit("3/hour")
-def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(
+    request: Request, data: ForgotPasswordRequest, db: Session = Depends(get_db)
+):
     admin = db.query(AdminUser).filter(AdminUser.email == data.email).first()
     if not admin:
         return {"status": "ok", "message": "Reset link sent"}
@@ -310,7 +316,9 @@ def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session =
 
 @router.post("/auth/reset-password")
 @limiter.limit("5/hour")
-def reset_password(request: Request, data: ResetPasswordRequest, db: Session = Depends(get_db)):
+def reset_password(
+    request: Request, data: ResetPasswordRequest, db: Session = Depends(get_db)
+):
     reset_token = (
         db.query(PasswordResetToken)
         .filter(
@@ -338,3 +346,48 @@ def reset_password(request: Request, data: ResetPasswordRequest, db: Session = D
     db.commit()
 
     return {"status": "ok", "message": "Password updated successfully"}
+
+
+@router.post("/admin/trips/notify")
+def send_manual_notification(
+    data: AdminTripNotificationRequest,
+    db: Session = Depends(get_db),
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    session = db.query(TripSession).filter(TripSession.id == data.trip_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Trip session not found")
+
+    if not session.device_token:
+        raise HTTPException(
+            status_code=400,
+            detail="This trip session does not have a device token associated with it",
+        )
+
+    notification = TripNotification(
+        session_id=session.id, message=data.message, is_read=False
+    )
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+
+    result = notifier.send_alert(
+        device_token=session.device_token,
+        trip_id=str(session.id),
+        alert_type="ADMIN_MESSAGE",
+        message_text=data.message,
+        notification_id=notification.id,
+    )
+
+    if not result.get("success"):
+        return {
+            "status": "warning",
+            "message": f"Notification saved but FCM failed: {result.get('error')}",
+            "notification_id": notification.id,
+        }
+
+    return {
+        "status": "ok",
+        "message": "Notification sent successfully",
+        "notification_id": notification.id,
+    }
