@@ -358,18 +358,20 @@ def send_manual_notification(
     if not session:
         raise HTTPException(status_code=404, detail="Trip session not found")
 
-    if not session.device_token:
-        raise HTTPException(
-            status_code=400,
-            detail="This trip session does not have a device token associated with it",
-        )
-
     notification = TripNotification(
         session_id=session.id, message=data.message, is_read=False
     )
     db.add(notification)
     db.commit()
     db.refresh(notification)
+
+    if not session.device_token:
+        return {
+            "status": "ok",
+            "message": "Notification saved in database (no device token for push)",
+            "notification_id": notification.id,
+            "push_sent": False,
+        }
 
     result = notifier.send_alert(
         device_token=session.device_token,
@@ -384,10 +386,12 @@ def send_manual_notification(
             "status": "warning",
             "message": f"Notification saved but FCM failed: {result.get('error')}",
             "notification_id": notification.id,
+            "push_sent": False,
         }
 
     return {
         "status": "ok",
         "message": "Notification sent successfully",
         "notification_id": notification.id,
+        "push_sent": True,
     }
